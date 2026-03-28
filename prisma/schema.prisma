@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ユーザープロフィール（auth.users と 1:1 で紐づく）
+model UserProfile {
+  id             String        @id // Supabase auth.users の UUID
+  headSpeed      Float?        // ヘッドスピード (m/s)
+  driverDistance Float?        // ドライバー平均飛距離 (yard)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  clubSettings   ClubSetting[]
+  subscription   Subscription?
+
+  @@map("user_profiles")
+}
+
+// 番手設定
+model ClubSetting {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String
+  user        UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clubName    String      // 番手名（例: "7番アイアン"）
+  loft        Float       // ロフト角 (度)
+  distance    Float       // 平均飛距離 (yard)
+  createdAt   DateTime    @default(now())
+
+  @@map("club_settings")
+}
+
+// サブスクリプション
+model Subscription {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String      @unique
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      Plan        @default(free)
+  status    String      @default("active")
+  createdAt DateTime    @default(now())
+
+  @@map("subscriptions")
+}
+
+enum Plan {
+  free
+  pro
+}
