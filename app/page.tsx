@@ -58,16 +58,23 @@ export default function HomePage() {
       )
       const distance = applyWindCorrection(rawDistance, wind)
 
-      // 5. クラブ設定を取得
+      // 5. クラブ設定とヘッドスピードを並行取得
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const { data: clubData } = await supabase
-        .from('club_settings')
-        .select('clubName, distance')
-        .eq('userId', user.id)
-        .order('distance', { ascending: false })
+      const [{ data: clubData }, { data: profileData }] = await Promise.all([
+        supabase
+          .from('club_settings')
+          .select('clubName, distance')
+          .eq('userId', user.id)
+          .order('distance', { ascending: false }),
+        supabase
+          .from('user_profiles')
+          .select('headSpeed')
+          .eq('id', user.id)
+          .single(),
+      ])
 
       if (!clubData || clubData.length === 0) {
         setError('番手設定がありません。セットアップを完了してください。')
@@ -85,6 +92,7 @@ export default function HomePage() {
           windSpeed: wind.speed,
           windDirection: wind.direction,
           clubs: clubData.map((c: { clubName: string; distance: number }) => ({ name: c.clubName, distance: c.distance })),
+          headSpeed: profileData?.headSpeed ?? null,
         }),
       })
 

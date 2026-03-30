@@ -2,26 +2,28 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { generateClubTable, type ClubDistance } from '@/lib/clubs'
+import { generateClubTable, DEFAULT_LOFTS, type ClubDistance } from '@/lib/clubs'
 import { createClient } from '@/lib/supabase/client'
 import ClubSetup from '@/components/ClubSetup'
+
+// デフォルトで使用する番手（全番手を有効にする）
+const ALL_CLUB_NAMES = new Set(DEFAULT_LOFTS.map((c) => c.name))
 
 export default function SetupPage() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [headSpeed, setHeadSpeed] = useState<string>('40')
   const [driverDistance, setDriverDistance] = useState<string>('200')
-  const [clubs, setClubs] = useState<ClubDistance[]>(() =>
-    generateClubTable(40, 200)
-  )
+  const [clubs, setClubs] = useState<ClubDistance[]>(() => generateClubTable(200))
+  const [enabledClubs, setEnabledClubs] = useState<Set<string>>(ALL_CLUB_NAMES)
   const [showDetail, setShowDetail] = useState(false)
 
-  // ヘッドスピード・飛距離変更時にリアルタイムで番手テーブルを更新
-  function handleInputChange(hs: string, dd: string) {
-    const hsNum = parseFloat(hs)
-    const ddNum = parseFloat(dd)
-    if (!isNaN(hsNum) && !isNaN(ddNum) && hsNum > 0 && ddNum > 0) {
-      setClubs(generateClubTable(hsNum, ddNum))
+  // ドライバー飛距離変更時にリアルタイムで番手テーブルを更新
+  function handleDriverDistanceChange(value: string) {
+    setDriverDistance(value)
+    const ddNum = parseFloat(value)
+    if (!isNaN(ddNum) && ddNum > 0) {
+      setClubs(generateClubTable(ddNum))
     }
   }
 
@@ -30,17 +32,19 @@ export default function SetupPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // user_profiles を upsert
+    // user_profiles を upsert（headSpeed も保存）
     await supabase.from('user_profiles').upsert({
       id: user.id,
       headSpeed: parseFloat(headSpeed),
       driverDistance: parseFloat(driverDistance),
     })
 
-    // 既存の club_settings を削除して再挿入
+    // 有効な番手だけ絞り込んで保存
+    const enabledClubList = clubs.filter((c) => enabledClubs.has(c.name))
+
     await supabase.from('club_settings').delete().eq('userId', user.id)
     await supabase.from('club_settings').insert(
-      clubs.map((c) => ({
+      enabledClubList.map((c) => ({
         userId: user.id,
         clubName: c.name,
         loft: c.loft,
@@ -57,7 +61,7 @@ export default function SetupPage() {
         <div className="text-center pt-4">
           <div className="text-4xl mb-2">⛳</div>
           <h1 className="text-xl font-bold text-green-800">初期設定</h1>
-          <p className="text-sm text-gray-500 mt-1">ヘッドスピードを入力してください</p>
+          <p className="text-sm text-gray-500 mt-1">あなたのデータを入力してください</p>
         </div>
 
         {/* 入力フォーム */}
@@ -69,15 +73,13 @@ export default function SetupPage() {
             <input
               type="number"
               value={headSpeed}
-              onChange={(e) => {
-                setHeadSpeed(e.target.value)
-                handleInputChange(e.target.value, driverDistance)
-              }}
+              onChange={(e) => setHeadSpeed(e.target.value)}
               className="w-full rounded-xl border border-gray-200 px-3 py-2 focus:border-green-500 focus:outline-none"
               min={20}
               max={60}
               step={0.5}
             />
+            <p className="mt-1 text-xs text-gray-400">AIが振り幅・力加減のアドバイスに使用します</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -86,10 +88,7 @@ export default function SetupPage() {
             <input
               type="number"
               value={driverDistance}
-              onChange={(e) => {
-                setDriverDistance(e.target.value)
-                handleInputChange(headSpeed, e.target.value)
-              }}
+              onChange={(e) => handleDriverDistanceChange(e.target.value)}
               className="w-full rounded-xl border border-gray-200 px-3 py-2 focus:border-green-500 focus:outline-none"
               min={100}
               max={400}
@@ -113,12 +112,18 @@ export default function SetupPage() {
             onClick={() => setShowDetail(!showDetail)}
             className="flex w-full items-center justify-between px-5 py-4 text-sm font-medium text-gray-700"
           >
-            詳細を調整する
+            番手・飛距離を詳細設定する
             <span>{showDetail ? '▲' : '▼'}</span>
           </button>
           {showDetail && (
             <div className="border-t px-5 pb-5 pt-4">
-              <ClubSetup clubs={clubs} onChange={setClubs} />
+              <p className="mb-3 text-xs text-gray-500">使う番手にチェックを入れ、飛距離を調整してください</p>
+              <ClubSetup
+                clubs={clubs}
+                enabledClubs={enabledClubs}
+                onChange={setClubs}
+                onEnabledChange={setEnabledClubs}
+              />
               <button
                 onClick={() => startTransition(saveAndRedirect)}
                 disabled={isPending}

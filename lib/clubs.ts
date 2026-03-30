@@ -22,19 +22,14 @@ export type ClubDistance = {
 }
 
 /**
- * ヘッドスピードとドライバー飛距離から全番手の飛距離テーブルを生成する
- * 補正係数 = 実測ドライバー飛距離 ÷ (ヘッドスピード × 6)
+ * ドライバー飛距離から全番手の飛距離テーブルを生成する
+ * 各番手の飛距離 = ドライバー飛距離 × (ドライバーロフト / 各番手ロフト)
  */
-export function generateClubTable(
-  headSpeed: number,
-  driverDistance: number
-): ClubDistance[] {
-  const baseFactor = driverDistance / (headSpeed * 6)
-
+export function generateClubTable(driverDistance: number): ClubDistance[] {
   return DEFAULT_LOFTS.map(({ name, loft }) => {
     // ロフト係数: ドライバーを基準に、ロフトが増えるほど飛距離が短くなる
     const loftFactor = DEFAULT_LOFTS[0].loft / loft
-    const distance = Math.round(headSpeed * 6 * loftFactor * baseFactor)
+    const distance = Math.round(driverDistance * loftFactor)
     return { name, loft, distance }
   })
 }
