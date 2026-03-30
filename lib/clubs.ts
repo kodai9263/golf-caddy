@@ -1,18 +1,40 @@
-// 13番手のデフォルトロフト角プリセット
+// 番手プリセット（datalistのサジェスト用。ロフト昇順で並べる）
 export const DEFAULT_LOFTS: { name: string; loft: number }[] = [
-  { name: 'ドライバー',    loft: 10.5 },
-  { name: '3W',           loft: 15   },
-  { name: '5W',           loft: 18   },
-  { name: 'UT',           loft: 21   },
-  { name: '5I',           loft: 25   },
-  { name: '6I',           loft: 28   },
-  { name: '7I',           loft: 32   },
-  { name: '8I',           loft: 36   },
-  { name: '9I',           loft: 40   },
-  { name: 'PW',           loft: 44   },
-  { name: 'AW',           loft: 50   },
-  { name: 'SW',           loft: 56   },
-  { name: 'LW',           loft: 60   },
+  // ウッド
+  { name: 'ドライバー', loft: 10.5 },
+  { name: '2W',         loft: 13   },
+  { name: '3W',         loft: 15   },
+  { name: '4W',         loft: 17   },
+  { name: '5W',         loft: 18   },
+  { name: '7W',         loft: 21   },
+  { name: '9W',         loft: 24   },
+  // ユーティリティ
+  { name: '2UT',        loft: 17   },
+  { name: '3UT',        loft: 19   },
+  { name: '4UT',        loft: 22   },
+  { name: '5UT',        loft: 25   },
+  { name: '6UT',        loft: 28   },
+  // アイアン
+  { name: '2I',         loft: 17   },
+  { name: '3I',         loft: 20   },
+  { name: '4I',         loft: 23   },
+  { name: '5I',         loft: 25   },
+  { name: '6I',         loft: 28   },
+  { name: '7I',         loft: 32   },
+  { name: '8I',         loft: 36   },
+  { name: '9I',         loft: 40   },
+  // ウェッジ
+  { name: 'PW',         loft: 44   },
+  { name: '46°',        loft: 46   },
+  { name: '48°',        loft: 48   },
+  { name: 'AW',         loft: 50   },
+  { name: '52°',        loft: 52   },
+  { name: '54°',        loft: 54   },
+  { name: 'SW',         loft: 56   },
+  { name: '58°',        loft: 58   },
+  { name: 'LW',         loft: 60   },
+  { name: '62°',        loft: 62   },
+  { name: '64°',        loft: 64   },
 ]
 
 export type ClubDistance = {

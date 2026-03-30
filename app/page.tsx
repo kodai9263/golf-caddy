@@ -120,9 +120,19 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-green-50 p-4">
       <div className="mx-auto max-w-md space-y-4">
-        <div className="text-center pt-6 pb-2">
-          <div className="text-5xl mb-2">⛳</div>
-          <h1 className="text-2xl font-bold text-green-800">ゴルフキャディ</h1>
+        <div className="flex items-start justify-between pt-6 pb-2">
+          <div className="flex-1 text-center">
+            <div className="text-5xl mb-2">⛳</div>
+            <h1 className="text-2xl font-bold text-green-800">ゴルフキャディ</h1>
+          </div>
+          {/* クラブ設定ページへ */}
+          <button
+            onClick={() => router.push('/setup')}
+            className="rounded-xl bg-white px-3 py-2 text-sm font-medium text-gray-500 shadow-sm hover:text-green-600 transition-colors"
+            aria-label="設定"
+          >
+            ⚙️ 設定
+          </button>
         </div>
 
         {/* ピンをセット */}

@@ -1,50 +1,80 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { generateClubTable, DEFAULT_LOFTS, type ClubDistance } from '@/lib/clubs'
+import { generateClubTable, type ClubDistance } from '@/lib/clubs'
 import { createClient } from '@/lib/supabase/client'
 import ClubSetup from '@/components/ClubSetup'
-
-// デフォルトで使用する番手（全番手を有効にする）
-const ALL_CLUB_NAMES = new Set(DEFAULT_LOFTS.map((c) => c.name))
 
 export default function SetupPage() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [headSpeed, setHeadSpeed] = useState<string>('40')
   const [driverDistance, setDriverDistance] = useState<string>('200')
-  const [clubs, setClubs] = useState<ClubDistance[]>(() => generateClubTable(200))
-  const [enabledClubs, setEnabledClubs] = useState<Set<string>>(ALL_CLUB_NAMES)
-  const [showDetail, setShowDetail] = useState(false)
+  // allClubs: 標準番手テンプレート（サジェスト・飛距離自動入力に使用）
+  const [allClubs, setAllClubs] = useState<ClubDistance[]>(() => generateClubTable(200))
+  // clubs: ユーザーが実際にバッグに追加した番手（初期は空）
+  const [clubs, setClubs] = useState<ClubDistance[]>([])
+  const [saveError, setSaveError] = useState<string | null>(null)
 
-  // ドライバー飛距離変更時にリアルタイムで番手テーブルを更新
+  // 既存の設定を読み込む（再設定時に前回の内容を復元）
+  useEffect(() => {
+    const supabase = createClient()
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const [{ data: profile }, { data: clubData }] = await Promise.all([
+        supabase.from('user_profiles').select('headSpeed, driverDistance').eq('id', user.id).single(),
+        supabase.from('club_settings').select('clubName, loft, distance').eq('userId', user.id).order('distance', { ascending: false }),
+      ])
+
+      if (profile?.headSpeed) setHeadSpeed(String(profile.headSpeed))
+      if (profile?.driverDistance) {
+        setDriverDistance(String(profile.driverDistance))
+        setAllClubs(generateClubTable(profile.driverDistance))
+      }
+      if (clubData && clubData.length > 0) {
+        setClubs(clubData.map((c: { clubName: string; loft: number; distance: number }) => ({
+          name: c.clubName, loft: c.loft, distance: c.distance,
+        })))
+      }
+    }
+    load()
+  }, [])
+
+  // ドライバー飛距離が変わったらテンプレートを再計算する
+  // （バッグに追加済みの番手は変更しない）
   function handleDriverDistanceChange(value: string) {
     setDriverDistance(value)
     const ddNum = parseFloat(value)
     if (!isNaN(ddNum) && ddNum > 0) {
-      setClubs(generateClubTable(ddNum))
+      setAllClubs(generateClubTable(ddNum))
     }
   }
 
   async function saveAndRedirect() {
+    if (clubs.length === 0) {
+      setSaveError('クラブを1本以上追加してください')
+      return
+    }
+    setSaveError(null)
+
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // user_profiles を upsert（headSpeed も保存）
+    // user_profiles を upsert（headSpeed・driverDistance を保存）
     await supabase.from('user_profiles').upsert({
       id: user.id,
       headSpeed: parseFloat(headSpeed),
       driverDistance: parseFloat(driverDistance),
     })
 
-    // 有効な番手だけ絞り込んで保存
-    const enabledClubList = clubs.filter((c) => enabledClubs.has(c.name))
-
+    // バッグのクラブをまるごと入れ替え
     await supabase.from('club_settings').delete().eq('userId', user.id)
     await supabase.from('club_settings').insert(
-      enabledClubList.map((c) => ({
+      clubs.map((c) => ({
         userId: user.id,
         clubName: c.name,
         loft: c.loft,
@@ -64,7 +94,7 @@ export default function SetupPage() {
           <p className="text-sm text-gray-500 mt-1">あなたのデータを入力してください</p>
         </div>
 
-        {/* 入力フォーム */}
+        {/* プレイヤー情報 */}
         <div className="rounded-2xl bg-white p-5 shadow-sm space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -94,46 +124,33 @@ export default function SetupPage() {
               max={400}
               step={5}
             />
+            <p className="mt-1 text-xs text-gray-400">標準番手を選んだとき飛距離を自動入力します</p>
           </div>
         </div>
 
-        {/* このまま使うボタン（推奨） */}
+        {/* クラブセッティング */}
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-medium text-gray-700 mb-3">バッグのクラブ</h2>
+          <ClubSetup
+            clubs={clubs}
+            allClubs={allClubs}
+            onChange={setClubs}
+          />
+        </div>
+
+        {/* バリデーションエラー */}
+        {saveError && (
+          <p className="text-sm text-red-600 text-center">{saveError}</p>
+        )}
+
+        {/* 保存ボタン */}
         <button
           onClick={() => startTransition(saveAndRedirect)}
           disabled={isPending}
           className="w-full rounded-2xl bg-green-600 py-4 text-lg font-bold text-white shadow-md transition hover:bg-green-700 active:bg-green-800 disabled:opacity-60"
         >
-          {isPending ? '保存中...' : 'このまま使う（推奨）'}
+          {isPending ? '保存中...' : '保存して始める'}
         </button>
-
-        {/* 詳細調整アコーディオン */}
-        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
-          <button
-            onClick={() => setShowDetail(!showDetail)}
-            className="flex w-full items-center justify-between px-5 py-4 text-sm font-medium text-gray-700"
-          >
-            番手・飛距離を詳細設定する
-            <span>{showDetail ? '▲' : '▼'}</span>
-          </button>
-          {showDetail && (
-            <div className="border-t px-5 pb-5 pt-4">
-              <p className="mb-3 text-xs text-gray-500">使う番手にチェックを入れ、飛距離を調整してください</p>
-              <ClubSetup
-                clubs={clubs}
-                enabledClubs={enabledClubs}
-                onChange={setClubs}
-                onEnabledChange={setEnabledClubs}
-              />
-              <button
-                onClick={() => startTransition(saveAndRedirect)}
-                disabled={isPending}
-                className="mt-4 w-full rounded-xl bg-green-600 py-3 text-sm font-bold text-white transition hover:bg-green-700 disabled:opacity-60"
-              >
-                {isPending ? '保存中...' : '調整して保存'}
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </main>
   )
