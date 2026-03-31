@@ -65,15 +65,25 @@ export default function SetupPage() {
     if (!user) return
 
     // user_profiles を upsert（headSpeed・driverDistance を保存）
-    await supabase.from('user_profiles').upsert({
+    const { error: profileError } = await supabase.from('user_profiles').upsert({
       id: user.id,
       headSpeed: parseFloat(headSpeed),
       driverDistance: parseFloat(driverDistance),
+      updatedAt: new Date().toISOString(),
     })
+    if (profileError) {
+      setSaveError(`プロフィール保存エラー: ${profileError.message}`)
+      return
+    }
 
     // バッグのクラブをまるごと入れ替え
-    await supabase.from('club_settings').delete().eq('userId', user.id)
-    await supabase.from('club_settings').insert(
+    const { error: deleteError } = await supabase.from('club_settings').delete().eq('userId', user.id)
+    if (deleteError) {
+      setSaveError(`クラブ削除エラー: ${deleteError.message}`)
+      return
+    }
+
+    const { error: insertError } = await supabase.from('club_settings').insert(
       clubs.map((c) => ({
         userId: user.id,
         clubName: c.name,
@@ -81,6 +91,10 @@ export default function SetupPage() {
         distance: c.distance,
       }))
     )
+    if (insertError) {
+      setSaveError(`クラブ保存エラー: ${insertError.message}`)
+      return
+    }
 
     router.push('/')
   }
