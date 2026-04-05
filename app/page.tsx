@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { calcDistance } from '@/lib/distance'
@@ -19,6 +19,12 @@ export default function HomePage() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [suggestText, setSuggestText] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [hasPrevPin, setHasPrevPin] = useState(false)
+
+  // 前回のピンがあるか確認
+  useEffect(() => {
+    setHasPrevPin(!!(localStorage.getItem('pinLat') && localStorage.getItem('pinLng')))
+  }, [])
 
   async function handleAskCaddy() {
     setIsLoading(true)
@@ -63,7 +69,7 @@ export default function HomePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const [{ data: clubData }, { data: profileData }] = await Promise.all([
+      const [{ data: clubData, error: clubError }, { data: profileData }] = await Promise.all([
         supabase
           .from('club_settings')
           .select('clubName, distance')
@@ -76,6 +82,10 @@ export default function HomePage() {
           .single(),
       ])
 
+      if (clubError) {
+        setError(`クラブ取得エラー: ${clubError.message}`)
+        return
+      }
       if (!clubData || clubData.length === 0) {
         setError('番手設定がありません。セットアップを完了してください。')
         return
@@ -135,13 +145,30 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* ピンをセット */}
-        <button
-          onClick={() => router.push('/pin')}
-          className="w-full rounded-2xl border-2 border-green-600 bg-white py-4 text-lg font-bold text-green-700 shadow-sm transition hover:bg-green-50 active:bg-green-100"
-        >
-          📍 ピンをセット
-        </button>
+        {/* マップ操作ボタン */}
+        {hasPrevPin ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push('/pin?mode=check')}
+              className="flex-1 rounded-2xl border-2 border-green-600 bg-white py-4 text-base font-bold text-green-700 shadow-sm transition hover:bg-green-50 active:bg-green-100"
+            >
+              🗺️ 距離を確認
+            </button>
+            <button
+              onClick={() => router.push('/pin?mode=new')}
+              className="flex-1 rounded-2xl border-2 border-green-600 bg-white py-4 text-base font-bold text-green-700 shadow-sm transition hover:bg-green-50 active:bg-green-100"
+            >
+              🚩 ホール変更
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => router.push('/pin?mode=new')}
+            className="w-full rounded-2xl border-2 border-green-600 bg-white py-4 text-lg font-bold text-green-700 shadow-sm transition hover:bg-green-50 active:bg-green-100"
+          >
+            🚩 ピンをセット
+          </button>
+        )}
 
         {/* キャディに聞く */}
         <button

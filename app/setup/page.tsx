@@ -54,6 +54,16 @@ export default function SetupPage() {
   }
 
   async function saveAndRedirect() {
+    const hs = parseFloat(headSpeed)
+    const dd = parseFloat(driverDistance)
+    if (isNaN(hs) || hs <= 0) {
+      setSaveError('ヘッドスピードを入力してください')
+      return
+    }
+    if (isNaN(dd) || dd <= 0) {
+      setSaveError('ドライバー平均飛距離を入力してください')
+      return
+    }
     if (clubs.length === 0) {
       setSaveError('クラブを1本以上追加してください')
       return

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import Anthropic from '@anthropic-ai/sdk'
+import Groq from 'groq-sdk'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 type RequestBody = {
   distance: number
@@ -12,7 +12,7 @@ type RequestBody = {
 }
 
 export async function POST(request: Request) {
-  // 認証チェック（getSession()ではなくgetUser()を使用）
+  // 認証チェック
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) {
@@ -55,25 +55,27 @@ ${clubList}
 ${swingAdvice}
 4. 返答は日本語で、3〜5文の簡潔な文章にしてください`
 
-  // SSEストリーミングで返す
-  const stream = anthropic.messages.stream({
-    model: 'claude-opus-4-5',
-    max_tokens: 350,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
   const encoder = new TextEncoder()
   const readable = new ReadableStream({
     async start(controller) {
-      for await (const chunk of stream) {
-        if (
-          chunk.type === 'content_block_delta' &&
-          chunk.delta.type === 'text_delta'
-        ) {
-          controller.enqueue(encoder.encode(chunk.delta.text))
+      try {
+        const stream = await groq.chat.completions.create({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 350,
+          stream: true,
+        })
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content ?? ''
+          if (text) {
+            controller.enqueue(encoder.encode(text))
+          }
         }
+      } catch (e) {
+        controller.enqueue(encoder.encode(`\nエラー: ${e instanceof Error ? e.message : '不明なエラー'}`))
+      } finally {
+        controller.close()
       }
-      controller.close()
     },
   })
 
