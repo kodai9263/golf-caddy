@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { generateClubTable, type ClubDistance } from '@/lib/clubs'
 import { createClient } from '@/lib/supabase/client'
@@ -16,9 +16,18 @@ export default function SetupPage() {
   // clubs: ユーザーが実際にバッグに追加した番手（初期は空）
   const [clubs, setClubs] = useState<ClubDistance[]>([])
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [shotStats, setShotStats] = useState<{ club: string; count: number; avg: number; min: number; max: number }[]>([])
+
+  // ショット実績を取得
+  const fetchStats = useCallback(async () => {
+    const res = await fetch('/api/shot')
+    const data = await res.json()
+    if (data.stats) setShotStats(data.stats)
+  }, [])
 
   // 既存の設定を読み込む（再設定時に前回の内容を復元）
   useEffect(() => {
+    fetchStats()
     const supabase = createClient()
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -161,6 +170,25 @@ export default function SetupPage() {
             onChange={setClubs}
           />
         </div>
+
+        {/* 番手実績 */}
+        {shotStats.length > 0 && (
+          <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-medium text-gray-700 mb-3">📊 番手別実績</h2>
+            <div className="space-y-2">
+              {shotStats
+                .sort((a, b) => b.avg - a.avg)
+                .map(s => (
+                  <div key={s.club} className="flex items-center justify-between text-sm">
+                    <span className="font-medium text-gray-700 w-28">{s.club}</span>
+                    <span className="text-green-700 font-bold">{s.avg} yd</span>
+                    <span className="text-gray-400 text-xs">{s.min}〜{s.max} yd</span>
+                    <span className="text-gray-300 text-xs">{s.count}回</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* バリデーションエラー */}
         {saveError && (

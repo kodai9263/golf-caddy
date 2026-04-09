@@ -16,6 +16,8 @@ model UserProfile {
   updatedAt      DateTime      @updatedAt
   clubSettings   ClubSetting[]
   subscription   Subscription?
+  rounds         Round[]
+  shots          Shot[]
 
   @@map("user_profiles")
 }
@@ -31,6 +33,49 @@ model ClubSetting {
   createdAt   DateTime    @default(now())
 
   @@map("club_settings")
+}
+
+// ラウンド
+model Round {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String
+  user       UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseName String?     // コース名（任意）
+  date       DateTime    @default(now())
+  isActive   Boolean     @default(true) // 現在進行中かどうか
+  holes      Hole[]
+
+  @@map("rounds")
+}
+
+// ホール
+model Hole {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roundId    String   @db.Uuid
+  round      Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  holeNumber Int      // 1〜18
+  par        Int      @default(4)
+  score      Int?     // スコア（未入力はnull）
+  putts      Int?     // パット数（任意）
+  pinLat     Float?   // ピン緯度
+  pinLng     Float?   // ピン経度
+
+  @@unique([roundId, holeNumber])
+  @@map("holes")
+}
+
+// ショット実績
+model Shot {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String
+  user            UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holeId          String?  @db.Uuid  // ホールに紐付く（任意）
+  distance        Float    // AIに渡した距離（ヤード）
+  recommendedClub String   // AIが推奨した番手
+  usedClub        String   // 実際に使った番手
+  createdAt       DateTime @default(now())
+
+  @@map("shots")
 }
 
 // サブスクリプション

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 
@@ -12,10 +12,20 @@ type LatLng = { lat: number; lng: number }
 const DEFAULT_POSITION: LatLng = { lat: 35.6812, lng: 139.7671 } // 東京（フォールバック）
 
 export default function PinPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-gray-400">読み込み中...</div>}>
+      <PinPageInner />
+    </Suspense>
+  )
+}
+
+function PinPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   // mode=new: 新しいピンをセット / mode=check: 現在のピンで距離確認
   const mode = searchParams.get('mode') ?? 'new'
+  const roundId = searchParams.get('roundId')
+  const holeNumber = searchParams.get('hole') ? parseInt(searchParams.get('hole')!) : null
 
   const [position, setPosition] = useState<LatLng>(DEFAULT_POSITION)
   const [pinPosition, setPinPosition] = useState<LatLng | null>(null)
@@ -42,10 +52,24 @@ export default function PinPage() {
     )
   }, [mode])
 
-  function handleComplete() {
+  async function handleComplete() {
     if (!pinPosition) return
+    // localStorageに保存
     localStorage.setItem('pinLat', String(pinPosition.lat))
     localStorage.setItem('pinLng', String(pinPosition.lng))
+    // ラウンド中ならDBのholeにも保存
+    if (roundId && holeNumber) {
+      await fetch('/api/hole', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roundId,
+          holeNumber,
+          pinLat: pinPosition.lat,
+          pinLng: pinPosition.lng,
+        }),
+      })
+    }
     router.push('/')
   }
 

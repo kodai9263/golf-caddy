@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { calcDistance } from '@/lib/distance'
+import { calcDistance, calcEffectiveDistance } from '@/lib/distance'
+import { getElevations } from '@/lib/elevation'
 
 // ピンアイコン（旗）
 const pinIcon = L.divIcon({
@@ -56,6 +57,26 @@ export default function PinMap({ initialPosition, currentPosition, initialPin, o
   const [pinPosition, setPinPosition] = useState<LatLng | null>(initialPin ?? null)
   const [targetPosition, setTargetPosition] = useState<LatLng | null>(null)
 
+  // 標高データ（メートル）
+  const [elevCurrent, setElevCurrent] = useState<number | null>(null)
+  const [elevPin, setElevPin] = useState<number | null>(null)
+  const [elevTarget, setElevTarget] = useState<number | null>(null)
+  const [elevLoading, setElevLoading] = useState(false)
+
+  // ピンと現在地が揃ったタイミングで標高を取得
+  useEffect(() => {
+    if (!currentPosition || !pinPosition) return
+    setElevLoading(true)
+    getElevations([currentPosition, pinPosition])
+      .then(([ec, ep]) => {
+        setElevCurrent(ec)
+        setElevPin(ep)
+      })
+      .catch(() => { /* 標高取得失敗時は無視して水平距離のみ表示 */ })
+      .finally(() => setElevLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinPosition])
+
   // 自分→ターゲット距離
   const distToTarget = currentPosition && targetPosition
     ? calcDistance(currentPosition.lat, currentPosition.lng, targetPosition.lat, targetPosition.lng)
@@ -71,14 +92,32 @@ export default function PinMap({ initialPosition, currentPosition, initialPin, o
     ? calcDistance(currentPosition.lat, currentPosition.lng, pinPosition.lat, pinPosition.lng)
     : null
 
+  // 傾斜考慮の実効距離（自分→ピン）
+  const effectiveDistToPin =
+    distToPin !== null && elevCurrent !== null && elevPin !== null
+      ? calcEffectiveDistance(distToPin, elevPin - elevCurrent)
+      : null
+
+  // 傾斜考慮の実効距離（自分→ターゲット）
+  const effectiveDistToTarget =
+    distToTarget !== null && elevCurrent !== null && elevTarget !== null
+      ? calcEffectiveDistance(distToTarget, elevTarget - elevCurrent)
+      : null
+
   function handleTap(pos: LatLng) {
-    if (phase === 'pin') {
-      // 1タップ目: ピンをセット
+    if (phase === 'pin' && !pinPosition) {
+      // ピン未セット時のみピンを置く
       setPinPosition(pos)
       onPinSet(pos)
     } else {
-      // 2タップ目以降: 目標地点を更新
+      // ピンセット済み or target フェーズ: 目標地点を更新
+      if (phase === 'pin') setPhase('target')
       setTargetPosition(pos)
+      if (currentPosition) {
+        getElevations([pos])
+          .then(([et]) => setElevTarget(et))
+          .catch(() => {})
+      }
     }
   }
 
@@ -150,25 +189,62 @@ export default function PinMap({ initialPosition, currentPosition, initialPin, o
         </button>
       )}
 
+      {/* 目標地点確認フェーズ → ピン距離表示に戻る */}
+      {phase === 'target' && (
+        <button
+          onClick={() => { setPhase('pin'); setTargetPosition(null) }}
+          className="absolute top-4 left-4 z-[1000] rounded-xl bg-white/90 px-3 py-2 text-sm font-bold text-gray-700 shadow-lg"
+        >
+          ← ピン距離
+        </button>
+      )}
+
       {/* 自分→ピンの距離（ピンセット直後） */}
       {distToPin !== null && phase === 'pin' && (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] rounded-2xl bg-black/70 px-6 py-2 text-white text-2xl font-bold shadow-lg">
-          {distToPin} yd
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] rounded-2xl bg-black/70 px-6 py-3 text-white shadow-lg text-center">
+          <div className="text-2xl font-bold">
+            {effectiveDistToPin !== null ? effectiveDistToPin : distToPin} yd
+          </div>
+          {elevLoading && (
+            <div className="text-xs text-white/60 mt-0.5">傾斜計算中…</div>
+          )}
+          {effectiveDistToPin !== null && effectiveDistToPin !== distToPin && (
+            <div className="text-xs text-white/70 mt-0.5">
+              水平 {distToPin} yd
+              {elevPin !== null && elevCurrent !== null && (
+                <span className="ml-1">
+                  ({elevPin - elevCurrent > 0 ? '▲' : '▼'}{Math.abs(Math.round(elevPin - elevCurrent))}m)
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       {/* 目標地点確認フェーズの距離表示 */}
       {phase === 'target' && distToTarget !== null && (
         <>
-          {/* ターゲット→ピンの距離（上） */}
+          {/* ターゲット→ピンの残り距離（上） */}
           {distTargetToPin !== null && (
             <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[1000] text-white text-2xl font-bold" style={{textShadow:'0 1px 4px rgba(0,0,0,0.8)'}}>
-              {distTargetToPin} yd
+              残り {distTargetToPin} yd
             </div>
           )}
-          {/* 自分→ターゲットの距離（下） */}
-          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] text-white text-2xl font-bold" style={{textShadow:'0 1px 4px rgba(0,0,0,0.8)'}}>
-            {distToTarget} yd
+          {/* 自分→ターゲットの距離（下）・傾斜考慮あり */}
+          <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] text-center">
+            <div className="text-white text-2xl font-bold" style={{textShadow:'0 1px 4px rgba(0,0,0,0.8)'}}>
+              {effectiveDistToTarget !== null ? effectiveDistToTarget : distToTarget} yd
+            </div>
+            {effectiveDistToTarget !== null && effectiveDistToTarget !== distToTarget && (
+              <div className="text-white/70 text-xs mt-0.5" style={{textShadow:'0 1px 3px rgba(0,0,0,0.9)'}}>
+                水平 {distToTarget} yd
+                {elevTarget !== null && elevCurrent !== null && (
+                  <span className="ml-1">
+                    ({elevTarget - elevCurrent > 0 ? '▲' : '▼'}{Math.abs(Math.round(elevTarget - elevCurrent))}m)
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}
