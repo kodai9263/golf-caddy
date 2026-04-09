@@ -10,6 +10,10 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: 'ゴルフキャディ',
   description: 'AIがクラブ選択をサポートするゴルフキャディアプリ',
+  icons: {
+    icon: '/icon-192.png',
+    apple: '/icon-192.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
