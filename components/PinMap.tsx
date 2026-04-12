@@ -41,6 +41,7 @@ type Props = {
   currentPosition?: LatLng | null
   initialPin?: LatLng | null  // 前回のピン座標（復元用）
   onPinSet: (position: LatLng) => void
+  onAskCaddy?: (distance: number) => void  // 目標地点でキャディに聞く
 }
 
 function TapHandler({ onTap }: { onTap: (pos: LatLng) => void }) {
@@ -52,7 +53,7 @@ function TapHandler({ onTap }: { onTap: (pos: LatLng) => void }) {
   return null
 }
 
-export default function PinMap({ initialPosition, currentPosition, initialPin, onPinSet }: Props) {
+export default function PinMap({ initialPosition, currentPosition, initialPin, onPinSet, onAskCaddy }: Props) {
   const [phase, setPhase] = useState<Phase>(initialPin ? 'target' : 'pin')
   const [pinPosition, setPinPosition] = useState<LatLng | null>(initialPin ?? null)
   const [targetPosition, setTargetPosition] = useState<LatLng | null>(null)
@@ -247,6 +248,18 @@ export default function PinMap({ initialPosition, currentPosition, initialPin, o
             )}
           </div>
         </>
+      )}
+
+      {/* target フェーズ: キャディに聞くボタン */}
+      {phase === 'target' && distToTarget !== null && onAskCaddy && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] w-64">
+          <button
+            onClick={() => onAskCaddy(effectiveDistToTarget ?? distToTarget)}
+            className="w-full rounded-2xl bg-green-600 py-3 text-base font-bold text-white shadow-lg"
+          >
+            🏌️ この地点でキャディに聞く
+          </button>
+        </div>
       )}
 
       {/* 目標地点確認中のヒント */}
