@@ -9,6 +9,16 @@ export async function POST(req: Request) {
 
   const { roundId, holeNumber, par, score, putts, pinLat, pinLng } = await req.json()
 
+  // roundIdが自分のラウンドか確認（他人のラウンドへの書き込みを防ぐ）
+  const { data: round } = await supabase
+    .from('rounds')
+    .select('id')
+    .eq('id', roundId)
+    .eq('userId', user.id)
+    .single()
+
+  if (!round) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const { data: hole, error } = await supabase
     .from('holes')
     .upsert(
