@@ -33,8 +33,8 @@ const currentIcon = L.divIcon({
 
 type LatLng = { lat: number; lng: number }
 
-// フェーズ: 'pin' = ピンセット中, 'target' = 目標地点確認中
-type Phase = 'pin' | 'target'
+// フェーズ: 'position' = 手動現在地セット中, 'pin' = ピンセット中, 'target' = 目標地点確認中
+type Phase = 'position' | 'pin' | 'target'
 
 type Props = {
   initialPosition: LatLng
@@ -42,6 +42,8 @@ type Props = {
   initialPin?: LatLng | null  // 前回のピン座標（復元用）
   onPinSet: (position: LatLng) => void
   onAskCaddy?: (distance: number) => void  // 目標地点でキャディに聞く
+  manualPositionMode?: boolean              // GPS失敗時に手動で現在地をセット
+  onCurrentPositionSet?: (pos: LatLng) => void
 }
 
 function TapHandler({ onTap }: { onTap: (pos: LatLng) => void }) {
@@ -53,8 +55,11 @@ function TapHandler({ onTap }: { onTap: (pos: LatLng) => void }) {
   return null
 }
 
-export default function PinMap({ initialPosition, currentPosition, initialPin, onPinSet, onAskCaddy }: Props) {
-  const [phase, setPhase] = useState<Phase>(initialPin ? 'target' : 'pin')
+export default function PinMap({ initialPosition, currentPosition, initialPin, onPinSet, onAskCaddy, manualPositionMode, onCurrentPositionSet }: Props) {
+  // GPS失敗時は 'position' フェーズから開始
+  const [phase, setPhase] = useState<Phase>(
+    manualPositionMode && !currentPosition ? 'position' : initialPin ? 'target' : 'pin'
+  )
   const [pinPosition, setPinPosition] = useState<LatLng | null>(initialPin ?? null)
   const [targetPosition, setTargetPosition] = useState<LatLng | null>(null)
 
@@ -106,6 +111,13 @@ export default function PinMap({ initialPosition, currentPosition, initialPin, o
       : null
 
   function handleTap(pos: LatLng) {
+    if (phase === 'position') {
+      // 手動現在地セット: タップした場所を現在地として親に通知
+      onCurrentPositionSet?.(pos)
+      setPhase('pin')
+      return
+    }
+
     if (phase === 'pin' && !pinPosition) {
       // ピン未セット時のみピンを置く
       setPinPosition(pos)
@@ -266,6 +278,13 @@ export default function PinMap({ initialPosition, currentPosition, initialPin, o
       {phase === 'target' && !targetPosition && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] rounded-xl bg-black/60 px-4 py-2 text-sm text-white shadow">
           距離を確認したい地点をタップ
+        </div>
+      )}
+
+      {/* GPS未取得: 手動現在地セットの案内 */}
+      {phase === 'position' && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] rounded-xl bg-orange-600/90 px-4 py-2 text-sm font-bold text-white shadow">
+          📍 現在地をタップしてセット
         </div>
       )}
     </div>

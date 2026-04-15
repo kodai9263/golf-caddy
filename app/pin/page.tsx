@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { applyWindCorrection } from '@/lib/wind'
+import { localSuggest } from '@/lib/localSuggest'
 import { createClient } from '@/lib/supabase/client'
 import SuggestCard from '@/components/SuggestCard'
 
@@ -33,6 +34,7 @@ function PinPageInner() {
   const [position, setPosition] = useState<LatLng>(DEFAULT_POSITION)
   const [pinPosition, setPinPosition] = useState<LatLng | null>(null)
   const [gpsLoading, setGpsLoading] = useState(true)
+  const [gpsAvailable, setGpsAvailable] = useState(true)  // GPS取得できたかどうか
 
   // 目標地点キャディ用の状態
   const [suggestText, setSuggestText] = useState('')
@@ -54,12 +56,25 @@ function PinPageInner() {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        const latLng = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setPosition(latLng)
+        setGpsAvailable(true)
         setGpsLoading(false)
+        // 次回GPS失敗時のフォールバック用に最終位置を保存
+        localStorage.setItem('lastKnownLat', String(latLng.lat))
+        localStorage.setItem('lastKnownLng', String(latLng.lng))
       },
       () => {
+        // GPS取得失敗: 前回の位置があればそこを初期表示、なければ東京
+        const lastLat = localStorage.getItem('lastKnownLat')
+        const lastLng = localStorage.getItem('lastKnownLng')
+        if (lastLat && lastLng) {
+          setPosition({ lat: parseFloat(lastLat), lng: parseFloat(lastLng) })
+        }
+        setGpsAvailable(false)
         setGpsLoading(false)
-      }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
   }, [mode])
 
@@ -72,9 +87,16 @@ function PinPageInner() {
     setSuggestClubs([])
 
     try {
-      // 1. 風速・風向を取得
-      const weatherRes = await fetch(`/api/weather?lat=${position.lat}&lon=${position.lng}`)
-      const wind = await weatherRes.json()
+      // 1. 風速・風向を取得（失敗時は無風として継続）
+      let wind = { speed: 0, direction: 0 }
+      try {
+        const weatherRes = await fetch(`/api/weather?lat=${position.lat}&lon=${position.lng}`)
+        if (weatherRes.ok) {
+          wind = await weatherRes.json()
+        }
+      } catch {
+        // 電波なし等で取得失敗 → 無風として継続
+      }
 
       // 2. 風補正後の距離を計算
       const correctedDistance = applyWindCorrection(distance, wind)
@@ -94,36 +116,45 @@ function PinPageInner() {
         return
       }
 
-      // 4. SSE でキャディアドバイスを受信
       setSuggestDistance(correctedDistance)
       setSuggestClubs(clubData.map((c: { clubName: string }) => c.clubName))
-      setIsLoading(false)
-      setIsStreaming(true)
 
-      const res = await fetch('/api/suggest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          distance: correctedDistance,
-          windSpeed: wind.speed,
-          windDirection: wind.direction,
-          clubs: clubData.map((c: { clubName: string; distance: number }) => ({ name: c.clubName, distance: c.distance })),
-          headSpeed: profileData?.headSpeed ?? null,
-        }),
-      })
+      // 4. オンライン時: SSE でキャディアドバイスを受信
+      //    オフライン時: ルールベースでローカル推薦にフォールバック
+      let usedOnline = false
+      try {
+        const res = await fetch('/api/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            distance: correctedDistance,
+            windSpeed: wind.speed,
+            windDirection: wind.direction,
+            clubs: clubData.map((c: { clubName: string; distance: number }) => ({ name: c.clubName, distance: c.distance })),
+            headSpeed: profileData?.headSpeed ?? null,
+          }),
+        })
 
-      if (!res.ok || !res.body) {
-        setSuggestError('提案の取得に失敗しました')
-        setIsStreaming(false)
-        return
+        if (res.ok && res.body) {
+          usedOnline = true
+          setIsLoading(false)
+          setIsStreaming(true)
+          const reader = res.body.getReader()
+          const decoder = new TextDecoder()
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            setSuggestText(prev => prev + decoder.decode(value))
+          }
+        }
+      } catch {
+        // ネットワークエラー → オフラインフォールバックへ
       }
 
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        setSuggestText(prev => prev + decoder.decode(value))
+      // オンライン取得に失敗した場合はルールベースで推薦
+      if (!usedOnline) {
+        const clubs = clubData.map((c: { clubName: string; distance: number }) => ({ name: c.clubName, distance: c.distance }))
+        setSuggestText(localSuggest(correctedDistance, clubs))
       }
     } catch {
       setSuggestError('エラーが発生しました。もう一度お試しください。')
@@ -178,10 +209,12 @@ function PinPageInner() {
         ) : (
           <PinMap
             initialPosition={pinPosition ?? position}
-            currentPosition={position}
+            currentPosition={gpsAvailable ? position : (position !== DEFAULT_POSITION ? position : null)}
             initialPin={isCheckMode ? pinPosition : null}
             onPinSet={setPinPosition}
             onAskCaddy={handleAskCaddyForTarget}
+            manualPositionMode={!gpsAvailable}
+            onCurrentPositionSet={(pos) => setPosition(pos)}
           />
         )}
       </div>
