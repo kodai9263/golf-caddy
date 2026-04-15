@@ -22,6 +22,17 @@ export async function POST(request: Request) {
   const body: RequestBody = await request.json()
   const { distance, windSpeed, windDirection, clubs, headSpeed } = body
 
+  // 入力値のバリデーション（不正なリクエストによるAPI無駄消費を防ぐ）
+  if (
+    typeof distance !== 'number' || distance < 1 || distance > 600 ||
+    typeof windSpeed !== 'number' || windSpeed < 0 || windSpeed > 50 ||
+    typeof windDirection !== 'number' || windDirection < 0 || windDirection > 360 ||
+    !Array.isArray(clubs) || clubs.length === 0 || clubs.length > 20 ||
+    clubs.some(c => typeof c.name !== 'string' || c.name.length > 30 || typeof c.distance !== 'number')
+  ) {
+    return new Response('Bad Request', { status: 400 })
+  }
+
   // 風向を人間が読める形式に変換
   const directions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西']
   const windDirectionText = directions[Math.round(windDirection / 45) % 8]
