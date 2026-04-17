@@ -90,6 +90,14 @@ export default function LoginPage({
           </svg>
           Googleでログイン
         </button>
+
+        <p className="mt-6 text-center text-xs text-gray-400">
+          ログインすることで
+          <a href="/privacy" className="underline text-gray-500 hover:text-green-600">
+            プライバシーポリシー
+          </a>
+          に同意したものとみなします
+        </p>
       </div>
     </main>
   )
