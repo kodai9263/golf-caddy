@@ -24,12 +24,16 @@ type Props = {
 export default function ClubSetup({ clubs, allClubs, onChange }: Props) {
   const [newName, setNewName] = useState('')
   const [newDistance, setNewDistance] = useState('')
+  const [newLoft, setNewLoft] = useState('')
 
-  /** 番手名が変わったとき、標準番手ならば飛距離を自動入力する */
+  /** 番手名が変わったとき、標準番手ならば飛距離とロフトを自動入力する */
   function handleNameInput(name: string) {
     setNewName(name)
     const template = allClubs.find((c) => c.name === name)
-    if (template) setNewDistance(String(template.distance))
+    if (template) {
+      setNewDistance(String(template.distance))
+      setNewLoft(String(template.loft))
+    }
   }
 
   /** フォームの内容をバッグに追加する */
@@ -40,15 +44,16 @@ export default function ClubSetup({ clubs, allClubs, onChange }: Props) {
     // 同名クラブが既にある場合はスキップ
     if (clubs.some((c) => c.name === newName.trim())) return
 
-    const template = allClubs.find((c) => c.name === newName.trim())
+    const loft = parseFloat(newLoft)
     const newClub: ClubDistance = {
       name: newName.trim(),
-      loft: template?.loft ?? 0, // 標準番手以外はロフト不明なので 0
+      loft: isNaN(loft) ? 0 : loft,
       distance,
     }
     onChange([...clubs, newClub])
     setNewName('')
     setNewDistance('')
+    setNewLoft('')
   }
 
   /** 指定インデックスの飛距離を更新する */
@@ -56,6 +61,13 @@ export default function ClubSetup({ clubs, allClubs, onChange }: Props) {
     const distance = parseInt(value, 10)
     if (isNaN(distance)) return
     onChange(clubs.map((club, i) => (i === index ? { ...club, distance } : club)))
+  }
+
+  /** 指定インデックスのロフトを更新する */
+  function handleLoftChange(index: number, value: string) {
+    const loft = parseFloat(value)
+    if (isNaN(loft)) return
+    onChange(clubs.map((club, i) => (i === index ? { ...club, loft } : club)))
   }
 
   /** 番手をバッグから外す */
@@ -72,6 +84,7 @@ export default function ClubSetup({ clubs, allClubs, onChange }: Props) {
             <thead>
               <tr className="border-b text-left text-gray-500">
                 <th className="pb-2 pr-4 font-medium">番手</th>
+                <th className="pb-2 pr-2 font-medium">ロフト (°)</th>
                 <th className="pb-2 font-medium">飛距離 (yd)</th>
                 <th className="pb-2" />
               </tr>
@@ -80,6 +93,18 @@ export default function ClubSetup({ clubs, allClubs, onChange }: Props) {
               {clubs.map((club, i) => (
                 <tr key={club.name} className="border-b last:border-0">
                   <td className="py-2 pr-4 font-medium text-gray-800">{club.name}</td>
+                  <td className="py-2 pr-2">
+                    <input
+                      type="number"
+                      value={club.loft || ''}
+                      onChange={(e) => handleLoftChange(i, e.target.value)}
+                      className="w-16 rounded-lg border border-gray-200 px-2 py-1 text-center text-gray-800 focus:border-green-500 focus:outline-none"
+                      min={0}
+                      max={70}
+                      step={0.5}
+                      placeholder="—"
+                    />
+                  </td>
                   <td className="py-2">
                     <input
                       type="number"
@@ -112,8 +137,8 @@ export default function ClubSetup({ clubs, allClubs, onChange }: Props) {
       )}
 
       {/* 番手追加フォーム */}
-      <div className="flex gap-2 items-center">
-        <div className="flex-1">
+      <div className="flex gap-2 items-center flex-wrap">
+        <div className="flex-1 min-w-32">
           <input
             type="text"
             list="club-suggestions"
@@ -131,6 +156,16 @@ export default function ClubSetup({ clubs, allClubs, onChange }: Props) {
               ))}
           </datalist>
         </div>
+        <input
+          type="number"
+          value={newLoft}
+          onChange={(e) => setNewLoft(e.target.value)}
+          placeholder="ロフト°"
+          className="w-20 rounded-xl border border-gray-200 px-3 py-2 text-sm text-center focus:border-green-500 focus:outline-none"
+          min={0}
+          max={70}
+          step={0.5}
+        />
         <input
           type="number"
           value={newDistance}
