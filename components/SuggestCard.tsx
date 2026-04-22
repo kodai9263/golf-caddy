@@ -2,17 +2,19 @@
 
 import { useState } from 'react'
 import { isSpeechSupported, speak } from '@/lib/speech'
+import { useLanguage } from '@/lib/i18n'
 
 type Props = {
   text: string
   isStreaming: boolean
-  distance?: number          // キャディに渡した距離（ヤード）
-  recommendedClub?: string   // AIが推奨した番手（テキストから抽出）
-  clubs?: string[]           // ユーザーのクラブ一覧（番手選択に使用）
-  holeId?: string | null     // 記録に紐付けるホールID
+  distance?: number
+  recommendedClub?: string
+  clubs?: string[]
+  holeId?: string | null
 }
 
 export default function SuggestCard({ text, isStreaming, distance, clubs, holeId }: Props) {
+  const { t } = useLanguage()
   const [shotSaved, setShotSaved] = useState(false)
   const [savingClub, setSavingClub] = useState<string | null>(null)
 
@@ -45,8 +47,7 @@ export default function SuggestCard({ text, isStreaming, distance, clubs, holeId
   return (
     <div className="rounded-2xl bg-green-50 p-4 shadow-sm space-y-3">
       <div className="flex items-center gap-2">
-        <span className="text-lg">🏌️</span>
-        <span className="text-sm font-medium text-green-800">キャディのアドバイス</span>
+        <span className="text-sm font-medium text-green-800">{t('caddyAdvice')}</span>
       </div>
 
       {/* アドバイス本文 */}
@@ -66,7 +67,7 @@ export default function SuggestCard({ text, isStreaming, distance, clubs, holeId
               onClick={() => speak(text)}
               className="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-green-700"
             >
-              🔊 読み上げる
+              {t('readAloud')}
             </button>
           )}
 
@@ -74,10 +75,10 @@ export default function SuggestCard({ text, isStreaming, distance, clubs, holeId
           {distance && clubs && clubs.length > 0 && (
             <div className="border-t border-green-100 pt-3">
               {shotSaved ? (
-                <p className="text-sm text-green-700 font-medium">✅ 記録しました</p>
+                <p className="text-sm text-green-700 font-medium">{t('saved')}</p>
               ) : (
                 <>
-                  <p className="text-xs text-gray-500 mb-2">実際に使った番手を記録</p>
+                  <p className="text-xs text-gray-500 mb-2">{t('recordClub')}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {clubs.map(club => (
                       <button

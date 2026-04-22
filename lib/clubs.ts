@@ -1,7 +1,7 @@
 // 番手プリセット（datalistのサジェスト用。ロフト昇順で並べる）
 export const DEFAULT_LOFTS: { name: string; loft: number }[] = [
   // ウッド
-  { name: 'ドライバー', loft: 10.5 },
+  { name: '1W',         loft: 10.5 },
   { name: '2W',         loft: 13   },
   { name: '3W',         loft: 15   },
   { name: '4W',         loft: 17   },

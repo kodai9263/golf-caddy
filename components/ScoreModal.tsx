@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useLanguage } from '@/lib/i18n'
 
 type Props = {
   holeNumber: number
@@ -21,6 +22,7 @@ export default function ScoreModal({
   onSkip,
   onClose,
 }: Props) {
+  const { t } = useLanguage()
   const [par, setPar] = useState(initialPar)
   const [score, setScore] = useState<number>(initialScore ?? initialPar)
   const [putts, setPutts] = useState<number | null>(initialPutts)
@@ -31,7 +33,7 @@ export default function ScoreModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
       <div className="w-full max-w-md rounded-t-3xl bg-white p-6 space-y-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-800">ホール {holeNumber} スコア</h2>
+          <h2 className="text-lg font-bold text-gray-800">{t('holeScore')} {holeNumber} {t('holeScoreSuffix')}</h2>
           <button onClick={onClose} className="text-gray-400 text-2xl leading-none">×</button>
         </div>
 
@@ -53,7 +55,7 @@ export default function ScoreModal({
 
         {/* スコア入力 */}
         <div>
-          <p className="text-sm text-gray-500 mb-2">スコア</p>
+          <p className="text-sm text-gray-500 mb-2">{t('scoreLabel')}</p>
           <div className="flex items-center justify-center gap-6">
             <button
               onClick={() => setScore(s => Math.max(1, s - 1))}
@@ -78,7 +80,7 @@ export default function ScoreModal({
 
         {/* パット数（任意） */}
         <div>
-          <p className="text-sm text-gray-500 mb-2">パット数（任意）</p>
+          <p className="text-sm text-gray-500 mb-2">{t('puttsLabel')}</p>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setPutts(p => p != null ? Math.max(0, p - 1) : 2)}
@@ -100,7 +102,7 @@ export default function ScoreModal({
                 onClick={() => setPutts(null)}
                 className="text-xs text-gray-400 underline"
               >
-                クリア
+                {t('clear')}
               </button>
             )}
           </div>
@@ -111,7 +113,7 @@ export default function ScoreModal({
           onClick={() => onSave(score, putts, par)}
           className="w-full rounded-2xl bg-green-600 py-4 text-lg font-bold text-white shadow"
         >
-          保存して次のホールへ
+          {t('saveNextHole')}
         </button>
 
         {/* スキップ */}
@@ -119,7 +121,7 @@ export default function ScoreModal({
           onClick={onSkip}
           className="w-full text-sm text-gray-400 hover:text-gray-600"
         >
-          スコアを入力せず次へ
+          {t('skipNextHole')}
         </button>
       </div>
     </div>

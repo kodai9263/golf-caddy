@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useLanguage } from '@/lib/i18n'
 
 type Props = {
   onStart: (pars: number[]) => void
@@ -8,7 +9,7 @@ type Props = {
 }
 
 export default function ParSetupModal({ onStart, onClose }: Props) {
-  // 18ホール分、デフォルトはすべてPar4
+  const { t } = useLanguage()
   const [pars, setPars] = useState<number[]>(Array(18).fill(4))
 
   function cyclePar(index: number) {
@@ -26,15 +27,17 @@ export default function ParSetupModal({ onStart, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
       <div className="w-full max-w-md rounded-t-3xl bg-white p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-800">各ホールのParを設定</h2>
+          <h2 className="text-lg font-bold text-gray-800">{t('parSetupTitle')}</h2>
           <button onClick={onClose} className="text-gray-400 text-2xl leading-none">×</button>
         </div>
-        <p className="text-xs text-gray-400">タップで 3 → 4 → 5 と切り替えられます</p>
+        <p className="text-xs text-gray-400">{t('parSetupHint')}</p>
 
         {/* 前半・後半に分けて表示 */}
         {[0, 9].map(offset => (
           <div key={offset}>
-            <p className="text-xs font-bold text-gray-500 mb-2">{offset === 0 ? '前半 (1〜9H)' : '後半 (10〜18H)'}</p>
+            <p className="text-xs font-bold text-gray-500 mb-2">
+              {offset === 0 ? t('frontNine') : t('backNine')}
+            </p>
             <div className="grid grid-cols-9 gap-1">
               {pars.slice(offset, offset + 9).map((par, i) => {
                 const hole = offset + i + 1
@@ -59,7 +62,7 @@ export default function ParSetupModal({ onStart, onClose }: Props) {
 
         {/* トータルPar */}
         <div className="flex justify-between items-center rounded-xl bg-gray-50 px-4 py-2 text-sm">
-          <span className="text-gray-500">トータルPar</span>
+          <span className="text-gray-500">{t('totalPar')}</span>
           <span className="font-bold text-gray-800">{totalPar}</span>
         </div>
 
@@ -67,7 +70,7 @@ export default function ParSetupModal({ onStart, onClose }: Props) {
           onClick={() => onStart(pars)}
           className="w-full rounded-2xl bg-green-600 py-4 text-lg font-bold text-white shadow"
         >
-          ラウンド開始
+          {t('startRoundBtn')}
         </button>
       </div>
     </div>

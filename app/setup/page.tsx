@@ -4,10 +4,12 @@ import { useState, useEffect, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { generateClubTable, type ClubDistance } from '@/lib/clubs'
 import { createClient } from '@/lib/supabase/client'
+import { useLanguage, type Lang } from '@/lib/i18n'
 import ClubSetup from '@/components/ClubSetup'
 
 export default function SetupPage() {
   const router = useRouter()
+  const { lang, setLang, t } = useLanguage()
   const [isPending, startTransition] = useTransition()
   const [headSpeed, setHeadSpeed] = useState<string>('40')
   const [driverDistance, setDriverDistance] = useState<string>('200')
@@ -66,15 +68,15 @@ export default function SetupPage() {
     const hs = parseFloat(headSpeed)
     const dd = parseFloat(driverDistance)
     if (isNaN(hs) || hs <= 0) {
-      setSaveError('ヘッドスピードを入力してください')
+      setSaveError(t('headSpeedRequired'))
       return
     }
     if (isNaN(dd) || dd <= 0) {
-      setSaveError('ドライバー平均飛距離を入力してください')
+      setSaveError(t('driverDistanceRequired'))
       return
     }
     if (clubs.length === 0) {
-      setSaveError('クラブを1本以上追加してください')
+      setSaveError(t('clubRequired'))
       return
     }
     setSaveError(null)
@@ -91,14 +93,14 @@ export default function SetupPage() {
       updatedAt: new Date().toISOString(),
     })
     if (profileError) {
-      setSaveError(`プロフィール保存エラー: ${profileError.message}`)
+      setSaveError(`${t('headSpeedRequired')}: ${profileError.message}`)
       return
     }
 
     // バッグのクラブをまるごと入れ替え
     const { error: deleteError } = await supabase.from('club_settings').delete().eq('userId', user.id)
     if (deleteError) {
-      setSaveError(`クラブ削除エラー: ${deleteError.message}`)
+      setSaveError(`Club delete error: ${deleteError.message}`)
       return
     }
 
@@ -111,7 +113,7 @@ export default function SetupPage() {
       }))
     )
     if (insertError) {
-      setSaveError(`クラブ保存エラー: ${insertError.message}`)
+      setSaveError(`Club save error: ${insertError.message}`)
       return
     }
 
@@ -123,15 +125,35 @@ export default function SetupPage() {
       <div className="mx-auto max-w-md space-y-6">
         <div className="text-center pt-4">
           <div className="text-4xl mb-2">⛳</div>
-          <h1 className="text-xl font-bold text-green-800">初期設定</h1>
-          <p className="text-sm text-gray-500 mt-1">あなたのデータを入力してください</p>
+          <h1 className="text-xl font-bold text-green-800">{t('setupTitle')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('setupSub')}</p>
+        </div>
+
+        {/* 言語切り替え */}
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <p className="text-sm font-medium text-gray-700 mb-3">{t('language')}</p>
+          <div className="flex gap-2">
+            {(['ja', 'en'] as Lang[]).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition ${
+                  lang === l
+                    ? 'bg-green-600 text-white shadow-sm'
+                    : 'bg-green-50 text-green-700 hover:bg-green-100'
+                }`}
+              >
+                {l === 'ja' ? '🇯🇵 日本語' : '🇺🇸 English'}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* プレイヤー情報 */}
         <div className="rounded-2xl bg-white p-5 shadow-sm space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              ヘッドスピード (m/s)
+              {t('headSpeedLabel')}
             </label>
             <input
               type="number"
@@ -142,11 +164,11 @@ export default function SetupPage() {
               max={60}
               step={0.5}
             />
-            <p className="mt-1 text-xs text-gray-400">AIが振り幅・力加減のアドバイスに使用します</p>
+            <p className="mt-1 text-xs text-gray-400">{t('headSpeedHint')}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              ドライバー平均飛距離 (ヤード)
+              {t('driverDistanceLabel')}
             </label>
             <input
               type="number"
@@ -157,13 +179,13 @@ export default function SetupPage() {
               max={400}
               step={5}
             />
-            <p className="mt-1 text-xs text-gray-400">標準番手を選んだとき飛距離を自動入力します</p>
+            <p className="mt-1 text-xs text-gray-400">{t('driverDistanceHint')}</p>
           </div>
         </div>
 
         {/* クラブセッティング */}
         <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-medium text-gray-700 mb-3">バッグのクラブ</h2>
+          <h2 className="text-sm font-medium text-gray-700 mb-3">{t('bagClubs')}</h2>
           <ClubSetup
             clubs={clubs}
             allClubs={allClubs}
@@ -174,7 +196,7 @@ export default function SetupPage() {
         {/* 番手実績 */}
         {shotStats.length > 0 && (
           <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-medium text-gray-700 mb-3">📊 番手別実績</h2>
+            <h2 className="text-sm font-medium text-gray-700 mb-3">{t('clubStats')}</h2>
             <div className="space-y-2">
               {shotStats
                 .sort((a, b) => b.avg - a.avg)
@@ -183,7 +205,7 @@ export default function SetupPage() {
                     <span className="font-medium text-gray-700 w-28">{s.club}</span>
                     <span className="text-green-700 font-bold">{s.avg} yd</span>
                     <span className="text-gray-400 text-xs">{s.min}〜{s.max} yd</span>
-                    <span className="text-gray-300 text-xs">{s.count}回</span>
+                    <span className="text-gray-300 text-xs">{s.count}{t('times')}</span>
                   </div>
                 ))}
             </div>
@@ -201,7 +223,7 @@ export default function SetupPage() {
           disabled={isPending}
           className="w-full rounded-2xl bg-green-600 py-4 text-lg font-bold text-white shadow-md transition hover:bg-green-700 active:bg-green-800 disabled:opacity-60"
         >
-          {isPending ? '保存中...' : '保存して始める'}
+          {isPending ? t('saving') : t('saveStart')}
         </button>
       </div>
     </main>

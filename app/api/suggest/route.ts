@@ -9,6 +9,7 @@ type RequestBody = {
   windDirection: number
   clubs: { name: string; distance: number }[]
   headSpeed?: number | null
+  lang?: 'ja' | 'en'
 }
 
 export async function POST(request: Request) {
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   const body: RequestBody = await request.json()
-  const { distance, windSpeed, windDirection, clubs, headSpeed } = body
+  const { distance, windSpeed, windDirection, clubs, headSpeed, lang = 'ja' } = body
 
   // 入力値のバリデーション（不正なリクエストによるAPI無駄消費を防ぐ）
   if (
@@ -33,24 +34,56 @@ export async function POST(request: Request) {
     return new Response('Bad Request', { status: 400 })
   }
 
-  // 風向を人間が読める形式に変換
-  const directions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西']
-  const windDirectionText = directions[Math.round(windDirection / 45) % 8]
-
   const clubList = clubs
-    .map((c) => `${c.name}: ${c.distance}ヤード`)
+    .map((c) => `${c.name}: ${c.distance} yards`)
     .join('\n')
 
-  // ヘッドスピードが登録されている場合はプレイヤー情報を追加
-  const playerInfo = headSpeed
-    ? `\n【プレイヤー情報】\n- ヘッドスピード（ドライバー）: ${headSpeed} m/s\n`
-    : ''
+  let prompt: string
 
-  const swingAdvice = headSpeed
-    ? '3. 推奨クラブでの振り幅を時計表現（例: 9時〜3時のハーフスイング）と力感（例: 約80%・HS目安35m/s）で具体的に教えてください'
-    : '3. 打ち方のポイントを1文で添えてください'
+  if (lang === 'en') {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+    const windDirectionText = directions[Math.round(windDirection / 45) % 8]
 
-  const prompt = `あなたはプロゴルフキャディです。以下の条件でクラブ選択のアドバイスをしてください。
+    const playerInfo = headSpeed
+      ? `\n[Player Info]\n- Head speed (driver): ${headSpeed} m/s\n`
+      : ''
+
+    const swingAdvice = headSpeed
+      ? '3. For the recommended club, describe the swing length using clock positions (e.g. 9 o\'clock to 3 o\'clock half swing) and effort level (e.g. ~80%, HS target 35 m/s)'
+      : '3. Add one sentence tip on how to play the shot'
+
+    prompt = `You are a professional golf caddy. Please provide club selection advice based on the following conditions.
+
+[Situation]
+- Distance to pin: ${distance} yards
+- Wind speed: ${windSpeed.toFixed(1)} m/s
+- Wind direction: ${windDirectionText}
+${playerInfo}
+[Available clubs and distances]
+${clubList}
+
+[Instructions]
+1. Recommend 1-2 clubs
+2. Show the effective distance considering wind
+${swingAdvice}
+4. Reply in English, 3-5 concise sentences`
+  } else {
+    const directions = ['北', '北東', '東', '南東', '南', '南西', '西', '北西']
+    const windDirectionText = directions[Math.round(windDirection / 45) % 8]
+
+    const playerInfo = headSpeed
+      ? `\n【プレイヤー情報】\n- ヘッドスピード（ドライバー）: ${headSpeed} m/s\n`
+      : ''
+
+    const swingAdvice = headSpeed
+      ? '3. 推奨クラブでの振り幅を時計表現（例: 9時〜3時のハーフスイング）と力感（例: 約80%・HS目安35m/s）で具体的に教えてください'
+      : '3. 打ち方のポイントを1文で添えてください'
+
+    const clubListJa = clubs
+      .map((c) => `${c.name}: ${c.distance}ヤード`)
+      .join('\n')
+
+    prompt = `あなたはプロゴルフキャディです。以下の条件でクラブ選択のアドバイスをしてください。
 
 【状況】
 - ピンまでの距離: ${distance}ヤード
@@ -58,13 +91,14 @@ export async function POST(request: Request) {
 - 風向: ${windDirectionText}
 ${playerInfo}
 【使用可能なクラブと飛距離】
-${clubList}
+${clubListJa}
 
 【指示】
 1. 推奨クラブを1〜2本挙げてください
 2. 風の影響を考慮した実効距離を示してください
 ${swingAdvice}
 4. 返答は日本語で、3〜5文の簡潔な文章にしてください`
+  }
 
   const encoder = new TextEncoder()
   const readable = new ReadableStream({
@@ -83,7 +117,10 @@ ${swingAdvice}
           }
         }
       } catch (e) {
-        controller.enqueue(encoder.encode(`\nエラー: ${e instanceof Error ? e.message : '不明なエラー'}`))
+        const msg = lang === 'en'
+          ? `\nError: ${e instanceof Error ? e.message : 'Unknown error'}`
+          : `\nエラー: ${e instanceof Error ? e.message : '不明なエラー'}`
+        controller.enqueue(encoder.encode(msg))
       } finally {
         controller.close()
       }

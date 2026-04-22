@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useLanguage } from '@/lib/i18n'
 
 type BrowserType = 'line' | 'webview' | 'pwa' | 'browser'
 
@@ -18,25 +19,27 @@ function detectBrowser(): BrowserType {
 }
 
 function WebViewWarning({ type, siteUrl }: { type: BrowserType; siteUrl: string }) {
+  const { t } = useLanguage()
+
   if (type === 'line') {
     return (
       <div className="mb-6 rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-800">
-        <p className="font-bold mb-1">LINEのブラウザではログインできません</p>
-        <p>画面右下の <span className="font-mono font-bold">・・・</span> をタップして</p>
-        <p>「<span className="font-semibold">ブラウザで開く</span>」を選択してください</p>
+        <p className="font-bold mb-1">{t('lineWarningTitle')}</p>
+        <p>{t('lineWarningBody1')} <span className="font-mono font-bold">・・・</span> {t('lineWarningBody2')}</p>
+        <p>{t('lineWarningBody3')}</p>
       </div>
     )
   }
   if (type === 'webview' || type === 'pwa') {
     return (
       <div className="mb-6 rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-800">
-        <p className="font-bold mb-1">このブラウザではログインできません</p>
-        <p className="mb-2">SafariまたはChromeでこのページを開いてください</p>
+        <p className="font-bold mb-1">{t('webviewWarningTitle')}</p>
+        <p className="mb-2">{t('webviewWarningBody')}</p>
         <button
           onClick={() => navigator.clipboard?.writeText(siteUrl)}
           className="text-xs underline text-yellow-700"
         >
-          URLをコピーする
+          {t('copyUrl')}
         </button>
         <p className="mt-1 text-xs text-yellow-600 break-all">{siteUrl}</p>
       </div>
@@ -51,11 +54,8 @@ async function handleGoogleLogin() {
   window.location.href = url
 }
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>
-}) {
+export default function LoginPage() {
+  const { t } = useLanguage()
   const [browserType, setBrowserType] = useState<BrowserType>('browser')
   const [siteUrl, setSiteUrl] = useState('')
 
@@ -71,8 +71,8 @@ export default function LoginPage({
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg">
         <div className="mb-8 text-center">
           <div className="mb-3 text-5xl">⛳</div>
-          <h1 className="text-2xl font-bold text-green-800">ゴルフキャディ</h1>
-          <p className="mt-2 text-sm text-gray-500">AIがクラブ選択をサポートします</p>
+          <h1 className="text-2xl font-bold text-green-800">{t('appTitle')}</h1>
+          <p className="mt-2 text-sm text-gray-500">{t('loginTagline')}</p>
         </div>
 
         <WebViewWarning type={browserType} siteUrl={siteUrl} />
@@ -88,15 +88,26 @@ export default function LoginPage({
             <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
             <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
           </svg>
-          Googleでログイン
+          {t('signInGoogle')}
         </button>
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          ログインすることで
-          <a href="/privacy" className="underline text-gray-500 hover:text-green-600">
-            プライバシーポリシー
-          </a>
-          に同意したものとみなします
+          {t('privacyPre')}
+          {t('privacyPost') ? (
+            <>
+              <a href="/privacy" className="underline text-gray-500 hover:text-green-600">
+                {t('privacyLink')}
+              </a>
+              {t('privacyPost')}
+            </>
+          ) : (
+            <>
+              {' '}
+              <a href="/privacy" className="underline text-gray-500 hover:text-green-600">
+                {t('privacyLink')}
+              </a>
+            </>
+          )}
         </p>
       </div>
     </main>
