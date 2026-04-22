@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { applyWindCorrection } from '@/lib/wind'
 import { localSuggest } from '@/lib/localSuggest'
 import { createClient } from '@/lib/supabase/client'
+import { useLanguage } from '@/lib/i18n'
 import SuggestCard from '@/components/SuggestCard'
 
 // SSR無効でPinMapを読み込む（Leafletはブラウザ専用のため）
@@ -17,7 +18,7 @@ const DEFAULT_POSITION: LatLng = { lat: 35.6812, lng: 139.7671 } // 東京（フ
 
 export default function PinPage() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center text-gray-400">読み込み中...</div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-gray-400">Loading...</div>}>
       <PinPageInner />
     </Suspense>
   )
@@ -26,6 +27,7 @@ export default function PinPage() {
 function PinPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { lang, t } = useLanguage()
   // mode=new: 新しいピンをセット / mode=check: 現在のピンで距離確認
   const mode = searchParams.get('mode') ?? 'new'
   const roundId = searchParams.get('roundId')
@@ -34,7 +36,7 @@ function PinPageInner() {
   const [position, setPosition] = useState<LatLng>(DEFAULT_POSITION)
   const [pinPosition, setPinPosition] = useState<LatLng | null>(null)
   const [gpsLoading, setGpsLoading] = useState(true)
-  const [gpsAvailable, setGpsAvailable] = useState(true)  // GPS取得できたかどうか
+  const [gpsAvailable, setGpsAvailable] = useState(true)
 
   // 目標地点キャディ用の状態
   const [suggestText, setSuggestText] = useState('')
@@ -112,7 +114,7 @@ function PinPageInner() {
       ])
 
       if (!clubData || clubData.length === 0) {
-        setSuggestError('番手設定がありません。セットアップを完了してください。')
+        setSuggestError(t('noClubError'))
         return
       }
 
@@ -132,6 +134,7 @@ function PinPageInner() {
             windDirection: wind.direction,
             clubs: clubData.map((c: { clubName: string; distance: number }) => ({ name: c.clubName, distance: c.distance })),
             headSpeed: profileData?.headSpeed ?? null,
+            lang,
           }),
         })
 
@@ -154,10 +157,10 @@ function PinPageInner() {
       // オンライン取得に失敗した場合はルールベースで推薦
       if (!usedOnline) {
         const clubs = clubData.map((c: { clubName: string; distance: number }) => ({ name: c.clubName, distance: c.distance }))
-        setSuggestText(localSuggest(correctedDistance, clubs))
+        setSuggestText(localSuggest(correctedDistance, clubs, lang))
       }
     } catch {
-      setSuggestError('エラーが発生しました。もう一度お試しください。')
+      setSuggestError(t('error'))
     } finally {
       setIsLoading(false)
       setIsStreaming(false)
@@ -192,10 +195,10 @@ function PinPageInner() {
       {/* ヘッダー */}
       <div className="flex items-center justify-between bg-green-700 px-4 py-3 text-white">
         <button onClick={() => router.back()} className="text-sm">
-          ← 戻る
+          {t('back')}
         </button>
         <h1 className="font-bold">
-          {isCheckMode ? '距離を確認' : pinPosition ? 'ピンを変更できます' : 'ピンをタップしてセット'}
+          {isCheckMode ? t('checkDistanceTitle') : pinPosition ? t('changePinTitle') : t('setPinTitle')}
         </h1>
         <div className="w-12" />
       </div>
@@ -204,7 +207,7 @@ function PinPageInner() {
       <div className="flex-1 relative">
         {gpsLoading ? (
           <div className="flex h-full items-center justify-center bg-gray-100">
-            <p className="text-gray-500">GPS取得中...</p>
+            <p className="text-gray-500">{t('gettingGps')}</p>
           </div>
         ) : (
           <PinMap
@@ -222,21 +225,19 @@ function PinPageInner() {
       {/* ボタン */}
       <div className="bg-white p-4 shadow-lg">
         {isCheckMode ? (
-          // 距離確認モード: 戻るだけ
           <button
             onClick={() => router.push('/')}
             className="w-full rounded-2xl bg-green-600 py-4 text-lg font-bold text-white shadow transition hover:bg-green-700"
           >
-            戻る
+            {t('backBtn')}
           </button>
         ) : (
-          // ホール変更モード: セット完了
           <button
             onClick={handleComplete}
             disabled={!pinPosition}
             className="w-full rounded-2xl bg-green-600 py-4 text-lg font-bold text-white shadow transition hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500"
           >
-            {pinPosition ? 'セット完了' : 'マップをタップしてピンを置く'}
+            {pinPosition ? t('setComplete') : t('tapToSetPin')}
           </button>
         )}
       </div>
@@ -244,7 +245,7 @@ function PinPageInner() {
       {/* ローディング */}
       {isLoading && (
         <div className="bg-white px-4 pb-4 text-center text-sm text-gray-500">
-          取得中...
+          {t('fetching')}
         </div>
       )}
 

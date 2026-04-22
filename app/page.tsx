@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { calcDistance } from '@/lib/distance'
 import { applyWindCorrection } from '@/lib/wind'
 import { createClient } from '@/lib/supabase/client'
+import { useLanguage } from '@/lib/i18n'
 import SuggestCard from '@/components/SuggestCard'
 import ScoreModal from '@/components/ScoreModal'
 import ParSetupModal from '@/components/ParSetupModal'
@@ -35,6 +36,7 @@ type Round = {
 
 export default function HomePage() {
   const router = useRouter()
+  const { lang, t } = useLanguage()
   const [round, setRound] = useState<Round | null>(null)
   const [currentHole, setCurrentHole] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
@@ -159,7 +161,7 @@ export default function HomePage() {
 
       // 3. ピン座標を取得
       if (!pinLat || !pinLng) {
-        setError('ピンがセットされていません。先に「ピンをセット」してください。')
+        setError(t('noPinError'))
         return
       }
 
@@ -191,11 +193,11 @@ export default function HomePage() {
       ])
 
       if (clubError) {
-        setError(`クラブ取得エラー: ${clubError.message}`)
+        setError(`${t('clubFetchError')}${clubError.message}`)
         return
       }
       if (!clubData || clubData.length === 0) {
-        setError('番手設定がありません。セットアップを完了してください。')
+        setError(t('noClubError'))
         return
       }
 
@@ -213,11 +215,12 @@ export default function HomePage() {
           windDirection: wind.direction,
           clubs: clubData.map((c: { clubName: string; distance: number }) => ({ name: c.clubName, distance: c.distance })),
           headSpeed: profileData?.headSpeed ?? null,
+          lang,
         }),
       })
 
       if (!res.ok || !res.body) {
-        setError('提案の取得に失敗しました')
+        setError(t('suggestError'))
         setIsStreaming(false)
         return
       }
@@ -230,7 +233,7 @@ export default function HomePage() {
         setSuggestText((prev) => prev + decoder.decode(value))
       }
     } catch {
-      setError('エラーが発生しました。もう一度お試しください。')
+      setError(t('error'))
     } finally {
       setIsLoading(false)
       setIsStreaming(false)
@@ -249,19 +252,19 @@ export default function HomePage() {
         <div className="flex items-start justify-between pt-6 pb-2">
           <div className="flex-1 text-center">
             <div className="text-5xl mb-2">⛳</div>
-            <h1 className="text-2xl font-bold text-green-800">ゴルフキャディ</h1>
+            <h1 className="text-2xl font-bold text-green-800">{t('appTitle')}</h1>
           </div>
           <button
             onClick={() => router.push('/setup')}
             className="rounded-xl bg-white px-3 py-2 text-sm font-medium text-gray-500 shadow-sm hover:text-green-600 transition-colors"
-            aria-label="設定"
+            aria-label={t('settings')}
           >
-            ⚙️ 設定
+            {t('settings')}
           </button>
         </div>
 
         {roundLoading ? (
-          <div className="text-center text-gray-400 py-8">読み込み中...</div>
+          <div className="text-center text-gray-400 py-8">{t('loading')}</div>
         ) : round ? (
           <>
             {/* ホール情報 */}
@@ -275,13 +278,13 @@ export default function HomePage() {
                   ‹
                 </button>
                 <div className="text-center">
-                  <div className="text-xs text-gray-400 font-medium">HOLE</div>
+                  <div className="text-xs text-gray-400 font-medium">{t('hole')}</div>
                   <div className="text-4xl font-bold text-green-800">{currentHole}</div>
                   <div className="text-sm text-gray-500">
                     Par {currentHoleData?.par ?? 4}
                     {currentHoleData?.score != null && (
                       <span className={`ml-2 font-bold ${currentHoleData.score - currentHoleData.par < 0 ? 'text-red-500' : currentHoleData.score - currentHoleData.par > 0 ? 'text-blue-500' : 'text-gray-600'}`}>
-                        {currentHoleData.score}打
+                        {currentHoleData.score}{t('shots')}
                         ({currentHoleData.score - currentHoleData.par > 0 ? '+' : ''}{currentHoleData.score - currentHoleData.par})
                       </span>
                     )}
@@ -301,16 +304,16 @@ export default function HomePage() {
                 onClick={() => setShowScoreModal(true)}
                 className="mt-3 w-full rounded-xl border border-green-200 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
               >
-                {currentHoleData?.score != null ? '📝 スコアを修正' : '📝 スコアを入力'}
+                {currentHoleData?.score != null ? t('editScore') : t('enterScore')}
               </button>
             </div>
 
             {/* スコア合計 */}
             {totalPar > 0 && (
               <div className="rounded-xl bg-white px-4 py-2 shadow-sm flex justify-between items-center text-sm">
-                <span className="text-gray-500">トータル</span>
+                <span className="text-gray-500">{t('total')}</span>
                 <span className={`font-bold ${scoreDiff < 0 ? 'text-red-500' : scoreDiff > 0 ? 'text-blue-500' : 'text-gray-700'}`}>
-                  {totalScore}打 ({scoreDiff > 0 ? '+' : ''}{scoreDiff})
+                  {totalScore}{t('shots')} ({scoreDiff > 0 ? '+' : ''}{scoreDiff})
                 </span>
               </div>
             )}
@@ -322,13 +325,13 @@ export default function HomePage() {
                   onClick={() => router.push('/pin?mode=check')}
                   className="flex-1 rounded-2xl border-2 border-green-600 bg-white py-4 text-base font-bold text-green-700 shadow-sm transition hover:bg-green-50 active:bg-green-100"
                 >
-                  🗺️ 距離を確認
+                  {t('checkDistance')}
                 </button>
                 <button
                   onClick={() => router.push(`/pin?mode=new&roundId=${round.id}&hole=${currentHole}`)}
                   className="flex-1 rounded-2xl border-2 border-green-600 bg-white py-4 text-base font-bold text-green-700 shadow-sm transition hover:bg-green-50 active:bg-green-100"
                 >
-                  🚩 ピンをセット
+                  {t('setPin')}
                 </button>
               </div>
             ) : (
@@ -336,7 +339,7 @@ export default function HomePage() {
                 onClick={() => router.push(`/pin?mode=new&roundId=${round.id}&hole=${currentHole}`)}
                 className="w-full rounded-2xl border-2 border-green-600 bg-white py-4 text-lg font-bold text-green-700 shadow-sm transition hover:bg-green-50 active:bg-green-100"
               >
-                🚩 ピンをセット
+                {t('setPin')}
               </button>
             )}
 
@@ -346,7 +349,7 @@ export default function HomePage() {
               disabled={isLoading || isStreaming}
               className="w-full rounded-2xl bg-green-600 py-5 text-xl font-bold text-white shadow-lg transition hover:bg-green-700 active:bg-green-800 disabled:opacity-60"
             >
-              {isLoading ? '取得中...' : isStreaming ? '考え中...' : '🏌️ キャディに聞く'}
+              {isLoading ? t('fetching') : isStreaming ? t('thinking') : t('askCaddy')}
             </button>
 
             {/* ラウンド終了 */}
@@ -354,7 +357,7 @@ export default function HomePage() {
               onClick={handleEndRound}
               className="w-full rounded-xl py-2 text-sm text-gray-400 hover:text-red-500 transition-colors"
             >
-              ラウンドを終了する
+              {t('endRound')}
             </button>
           </>
         ) : (
@@ -362,14 +365,14 @@ export default function HomePage() {
           <div className="space-y-4">
             <div className="rounded-2xl bg-white p-6 shadow-sm text-center text-gray-500 text-sm">
               <div className="text-4xl mb-3">🏌️</div>
-              <p>ラウンドを開始してください</p>
-              <p className="text-xs mt-1 text-gray-400">スコア記録・ピン管理ができます</p>
+              <p>{t('noRound')}</p>
+              <p className="text-xs mt-1 text-gray-400">{t('noRoundSub')}</p>
             </div>
             <button
               onClick={() => setShowParSetup(true)}
               className="w-full rounded-2xl bg-green-600 py-5 text-xl font-bold text-white shadow-lg transition hover:bg-green-700"
             >
-              Par設定してラウンド開始
+              {t('startRound')}
             </button>
           </div>
         )}
