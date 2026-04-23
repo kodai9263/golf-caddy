@@ -15,7 +15,10 @@ export async function POST(req: Request) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[shot] insert: error:', error)
+    return NextResponse.json({ error: 'Failed to save shot' }, { status: 500 })
+  }
 
   return NextResponse.json({ shot })
 }
@@ -32,7 +35,10 @@ export async function GET() {
     .eq('userId', user.id)
     .order('createdAt', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[shot] select: error:', error)
+    return NextResponse.json({ error: 'Failed to fetch shot' }, { status: 500 })
+  }
 
   // 番手ごとに集計
   const stats: Record<string, { count: number; total: number; min: number; max: number }> = {}
