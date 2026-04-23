@@ -106,6 +106,24 @@ const translations = {
     backNine: '後半 (10〜18H)',
     totalPar: 'トータルPar',
     startRoundBtn: 'ラウンド開始',
+
+    // FeedbackWidget
+    feedbackBtn: 'フィードバック',
+    feedbackTitle: 'フィードバックを送る',
+    feedbackCategory: 'カテゴリ',
+    feedbackCatImprovement: '改善要望',
+    feedbackCatBug: 'バグ報告',
+    feedbackCatFeature: '使ってみたい機能',
+    feedbackCatOther: 'その他',
+    feedbackMessage: 'メッセージ',
+    feedbackMessagePlaceholder: 'ご意見・ご要望をお聞かせください',
+    feedbackEmail: '返信先メール',
+    feedbackEmailOptional: '（任意）',
+    feedbackSubmit: '送信する',
+    feedbackSubmitting: '送信中...',
+    feedbackSuccessTitle: 'ありがとうございます！',
+    feedbackSuccessSub: 'フィードバックを受け取りました',
+    feedbackError: '送信に失敗しました。もう一度お試しください。',
   },
   en: {
     // Common
@@ -208,6 +226,24 @@ const translations = {
     backNine: 'Back 9 (10–18)',
     totalPar: 'Total Par',
     startRoundBtn: 'Start Round',
+
+    // FeedbackWidget
+    feedbackBtn: 'Feedback',
+    feedbackTitle: 'Send Feedback',
+    feedbackCategory: 'Category',
+    feedbackCatImprovement: 'Improvement',
+    feedbackCatBug: 'Bug Report',
+    feedbackCatFeature: 'Feature Request',
+    feedbackCatOther: 'Other',
+    feedbackMessage: 'Message',
+    feedbackMessagePlaceholder: 'Share your thoughts or requests',
+    feedbackEmail: 'Reply Email',
+    feedbackEmailOptional: '(optional)',
+    feedbackSubmit: 'Submit',
+    feedbackSubmitting: 'Submitting...',
+    feedbackSuccessTitle: 'Thank you!',
+    feedbackSuccessSub: 'We received your feedback',
+    feedbackError: 'Failed to send. Please try again.',
   },
 } as const
 

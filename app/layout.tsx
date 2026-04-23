@@ -36,8 +36,10 @@ export default function RootLayout({
         <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID!} />
       </head>
       <body className="min-h-full flex flex-col">
-        <LanguageProvider>{children}</LanguageProvider>
-        <FeedbackWidget />
+        <LanguageProvider>
+          {children}
+          <FeedbackWidget />
+        </LanguageProvider>
       </body>
     </html>
   )
