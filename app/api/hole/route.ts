@@ -9,6 +9,26 @@ export async function POST(req: Request) {
 
   const { roundId, holeNumber, par, score, putts, pinLat, pinLng } = await req.json()
 
+  if (par !== undefined && ![3, 4, 5].includes(par)) {
+    return NextResponse.json({ error: 'Invalid par' }, { status: 400 })
+  }
+
+  if (score !== undefined && (typeof score !== 'number' || score < 1 || score > 15)) {
+    return NextResponse.json({ error: 'Invalid score' }, { status: 400 })
+  }
+
+  if (putts !== undefined && (typeof putts !== 'number' || putts < 0|| putts > 10)) {
+    return NextResponse.json({ error: 'Invalid putts' }, { status: 400})
+  }
+
+  if (pinLat !== undefined && (typeof pinLat !==  'number' || pinLat < -90 || pinLat > 90)) {
+    return NextResponse.json({ error: 'Invalid pinLat' }, { status: 400 })
+  }
+
+  if (pinLng !== undefined && (typeof pinLng !== 'number' || pinLng < -180 || pinLng > 180)) {
+    return NextResponse.json({ error: 'Invalid pinLng' }, { status: 400 })
+  }
+
   // roundIdが自分のラウンドか確認（他人のラウンドへの書き込みを防ぐ）
   const { data: round } = await supabase
     .from('rounds')
