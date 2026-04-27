@@ -9,6 +9,14 @@ export async function POST(req: Request) {
 
   const { holeId, distance, recommendedClub, usedClub } = await req.json()
 
+  if (typeof distance !== 'number' || distance < 0 || distance > 700) {
+    return NextResponse.json({ error: 'Invalid distance' }, { status: 400 })
+  }
+
+  if (typeof usedClub !== 'string' || usedClub.trim() === '' || usedClub.length > 30) {
+    return NextResponse.json({ error: 'Invalid usedClub' }, { status: 400 })
+  }
+
   const { data: shot, error } = await supabase
     .from('shots')
     .insert({ userId: user.id, holeId: holeId ?? null, distance, recommendedClub, usedClub })
