@@ -31,6 +31,10 @@ export async function POST(req: Request) {
 
   const { courseName, pars } = await req.json()
 
+  if (courseName !== undefined && (typeof courseName !== 'string' || courseName.length > 100)) {
+    return NextResponse.json({ error: 'Invalid courseName' }, { status: 400 })
+  }
+
   // 既存の進行中ラウンドを終了
   await supabase
     .from('rounds')
@@ -45,7 +49,10 @@ export async function POST(req: Request) {
     .select()
     .single()
 
-  if (error || !round) return NextResponse.json({ error: error?.message }, { status: 500 })
+    if (error || !round) {
+      console.error('[round] insert error:', error)
+      return NextResponse.json({ error: 'Failed to create round' }, { status: 500 })
+    }
 
   // 18ホール分のParを一括作成
   if (pars && Array.isArray(pars)) {
