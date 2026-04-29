@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
 
 type Props = {
-  onStart: (pars: number[]) => void
+  onStart: (pars: number[], startHole: 1 | 10) => void
   onClose: () => void
 }
 
 export default function ParSetupModal({ onStart, onClose }: Props) {
   const { t } = useLanguage()
   const [pars, setPars] = useState<number[]>(Array(18).fill(4))
+  const [startHole, setStartHole] = useState<1 | 10>(1)
 
   function cyclePar(index: number) {
     setPars(prev => {
@@ -60,6 +61,22 @@ export default function ParSetupModal({ onStart, onClose }: Props) {
           </div>
         ))}
 
+        {/* アウト/インスタート選択 */}
+        <div className="flex rounded-xl overflow-hidden border border-green-200">
+          <button
+            onClick={() => setStartHole(1)}
+            className={`flex-1 py-2 text-sm font-bold transition ${startHole === 1 ? 'bg-green-600 text-white' : 'bg-white text-gray-500'}`}
+          >
+            {t('outStart')}
+          </button>
+          <button
+            onClick={() => setStartHole(10)}
+            className={`flex-1 py-2 text-sm font-bold transition ${startHole === 10 ? 'bg-green-600 text-white' : 'bg-white text-gray-500'}`}
+          >
+            {t('inStart')}
+          </button>
+        </div>
+
         {/* トータルPar */}
         <div className="flex justify-between items-center rounded-xl bg-gray-50 px-4 py-2 text-sm">
           <span className="text-gray-500">{t('totalPar')}</span>
@@ -67,7 +84,7 @@ export default function ParSetupModal({ onStart, onClose }: Props) {
         </div>
 
         <button
-          onClick={() => onStart(pars)}
+          onClick={() => onStart(pars, startHole)}
           className="w-full rounded-2xl bg-green-600 py-4 text-lg font-bold text-white shadow"
         >
           {t('startRoundBtn')}

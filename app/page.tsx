@@ -75,7 +75,7 @@ export default function HomePage() {
   const hasPrevPin = !!(pinLat && pinLng)
 
   // ParSetupModalの「ラウンド開始」ボタンから呼ばれる
-  async function handleStartRound(pars: number[]) {
+  async function handleStartRound(pars: number[], startHole: 1 | 10) {
     setShowParSetup(false)
     setRoundLoading(true)
     const res = await fetch('/api/round', {
@@ -85,8 +85,9 @@ export default function HomePage() {
     })
     const data = await res.json()
     setRound(data.round)
-    setCurrentHole(1)
+    setCurrentHole(startHole)
     setRoundLoading(false)
+    router.push(`/pin?mode=new&roundId=${data.round.id}&hole=${startHole}`)
   }
 
   // ラウンド終了

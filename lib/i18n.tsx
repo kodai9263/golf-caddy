@@ -105,6 +105,8 @@ const translations = {
     frontNine: '前半 (1〜9H)',
     backNine: '後半 (10〜18H)',
     totalPar: 'トータルPar',
+    outStart: 'アウト（1番〜）',
+    inStart: 'イン（10番〜）',
     startRoundBtn: 'ラウンド開始',
 
     // FeedbackWidget
@@ -225,6 +227,8 @@ const translations = {
     frontNine: 'Front 9 (1–9)',
     backNine: 'Back 9 (10–18)',
     totalPar: 'Total Par',
+    outStart: 'Out (from #1)',
+    inStart: 'In (from #10)',
     startRoundBtn: 'Start Round',
 
     // FeedbackWidget
