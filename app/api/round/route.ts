@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
   const { courseName, pars } = await req.json()
 
-  if (courseName !== undefined && (typeof courseName !== 'string' || courseName.length > 100)) {
+  if (courseName !== undefined && courseName !== null && (typeof courseName !== 'string' || courseName.length > 100)) {
     return NextResponse.json({ error: 'Invalid courseName' }, { status: 400 })
   }
 
